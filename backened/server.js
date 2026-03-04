@@ -1,11 +1,35 @@
-const express = require('express')
-const app = express()
-const port = 5000
+const express=require('express');
+require('dotenv').config() // Load environment variables from .env into process.env
+// console.log(process.env.PORT);
+const main=require('./config/db');
+console.log(main);
+const client = require("./config/redis");
+console.log(client);
+const app=express();
+const userAuth=require('./Routes/userAuth');
+const cookieParser = require("cookie-parser");
+app.use(express.json());
 
-app.get('/', (req, res) => {
-  res.send('CodeArena BAckend Running-----')
-})
+app.use(cookieParser());
+app.use("/user",userAuth);
+const startServer = async () => {
+  try {
+    await main(); // DB connect
 
-app.listen(port, () => {
-  console.log(`codearea running on  ${port}`)
-})
+    await client.connect(); // Redis connect
+//     await client.set('foo', 'bar');
+// const result = await client.get('foo');
+// console.log(result) 
+    console.log("Redis connected");
+
+
+    app.listen(5000, () => {
+      console.log("Server running on port " + process.env.PORT);
+    });
+
+  } catch (err) {
+    console.error("Error occurred:", err);
+  }
+};
+
+startServer();

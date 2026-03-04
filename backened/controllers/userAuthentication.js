@@ -1,0 +1,110 @@
+const redis_client = require('../config/redis');
+const User=require('../model/user');
+const validate=require('../utils/validator');
+const bcrypt=require('bcrypt');
+const jwt = require('jsonwebtoken');
+
+const register=async (req,res)=>{
+ 
+    try{
+        validate(req.body);
+        const {firstName,emailId,password}=req.body;
+        // password Hashing
+        req.body.password= await bcrypt.hash(password,10);
+        req.body.role="user";
+        const user=await User.create(req.body);
+        const token = jwt.sign({ id:user._id,emailId:emailId }, process.env.JWT_SECRET,{expiresIn:60*60});
+        res.cookie('token',token,{maxAge:60*60*1000});
+        res.status(201).send("User registered Succesfully");
+    }
+    catch(err){
+     res.status(400).send("Error "+err);
+    }
+   
+}
+
+const login=async (req,res)=>{
+    try{ 
+    const {emailId,password}=req.body;
+    if(!emailId) throw new Error("Invalid Credentials");
+    if(!password) throw new Error("Invalid Credentials");
+    const user = await User.findOne({ emailId });
+    if (!user) {
+ throw new Error("Invalid Credentials");
+   }
+   console.log("body password:", password);
+console.log("db password:", user.password);
+
+     const match=await bcrypt.compare(password,user.password );
+
+       if (!match) {
+  throw new Error("Invalid Credentials");
+   }
+     const token = jwt.sign({ id:user.id,emailId:emailId }, process.env.JWT_SECRET,{expiresIn:60*60});
+        res.cookie('token',token,{maxAge:60*60*1000});
+        res.status(201).send("Login succesfully");
+}
+catch(err){
+    res.status(200).send("Error"+err);
+}
+
+}
+
+const logout=async(req,res)=>{
+    try{
+        const {token}=req.cookies;
+        const payload=jwt.decode(token);
+        await redis_client.set(`token:${token}`,"Blocked");
+        await redis_client.expireAt(`token:${token}`,payload.exp);
+        res.cookie("token",null,{expires: new Date(Date.now())});
+        res.send("logged out Successfully");
+    }
+    catch(err){
+           res.status(503).send('logoutError: '+err);
+    }
+}
+
+
+const adminRegister=async (req,res)=>{
+ 
+    try{
+        validate(req.body);
+        const {firstName,emailId,password}=req.body;
+        // password Hashing
+        req.body.password= await bcrypt.hash(password,10);
+        req.body.role="admin";
+        
+        const user=await User.create(req.body);
+        const token = jwt.sign({ id:user._id,emailId:emailId,role:'admin' }, process.env.JWT_SECRET,{expiresIn:60*60});
+        res.cookie('token',token,{maxAge:60*60*1000});
+        res.status(201).send("User registered Succesfully");
+    }
+    catch(err){
+     res.status(400).send("Error "+err);
+    }
+   
+}
+
+const getProfile = async (req, res) => {
+  try {
+    const user = req.result;   // already authenticated user
+
+    if (!user) {
+      throw new Error("Invalid Credentials");
+    }
+
+    res.status(200).send({
+      firstname: user.firstname,
+      lastname: user.lastname,
+      emailId: user.emailId,
+      problemSolved: user.problemSolved
+    });
+
+  } catch (err) {
+    res.status(401).send("Error: " + err.message);
+  }
+};
+
+
+
+module.exports={register,login,logout,adminRegister,getProfile};
