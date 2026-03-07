@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../config/db');
+const User = require('../Model/user');
 const redis_client=require('../config/redis');
 const userMiddleware=async (req,res,next)=>{
 
@@ -9,13 +9,13 @@ const userMiddleware=async (req,res,next)=>{
        const  payload=jwt.verify(token, process.env.JWT_SECRET);
        
        const {emailId}=payload;
-    //    console.log(emailId);
+       console.log(emailId);
        if(!emailId) throw new Error('Invalid token');
        const result=await User.findOne({emailId});
-    //    console.log(result);
+       console.log(result);
        if(!result) throw new Error("User Doesn't Exists");
        const IsBlocked=await  redis_client.exists(`token:${token}`);
-    //    console.log(IsBlocked);
+       console.log(IsBlocked);
         if(IsBlocked) throw new Error('Invalid token');
         req.result=result;
         next();

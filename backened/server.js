@@ -6,12 +6,15 @@ console.log(main);
 const client = require("./config/redis");
 console.log(client);
 const app=express();
-const userAuth=require('./Routes/userAuth');
+const userAuth=require('./Routes/UserAuth');
 const cookieParser = require("cookie-parser");
+const problemRouter = require('./Routes/problemCreation');
 app.use(express.json());
 
 app.use(cookieParser());
 app.use("/user",userAuth);
+app.use("/problem",problemRouter);
+
 const startServer = async () => {
   try {
     await main(); // DB connect
