@@ -37,8 +37,7 @@ const createProblem = async (req,res)=>{
         
         const resultToken = submitResult.map((value)=> value.token);
 
-        // ["db54881d-bcf5-4c7b-a2e3-d33fe7e25de7","ecc52a9b-ea80-4a00-ad50-4ab6cc3bb2a1","1b35ec3b-5776-48ef-b646-d5522bdeb2cc"]
-        
+    
        const testResult = await submitToken(resultToken);
 
     //    console.log('test result',testResult);
@@ -53,8 +52,8 @@ const createProblem = async (req,res)=>{
 
 
       // We can store it in our DB
-      console.log(Problem);
-console.log(typeof Problem);
+    //   console.log('Problem',Problem);
+// console.log(typeof Problem);
 
     const userProblem =  await Problem.create({
         ...req.body,
@@ -64,9 +63,106 @@ console.log(typeof Problem);
       res.status(201).send("Problem Saved Successfully");
     }
     catch(err){
+        res.status(500).send("Error: "+err);
+    }
+}
+
+const updateProblem=async(req,res)=>{
+    const {id}=req.params;
+ 
+    const {title,description,difficulty,tags,
+        visibleTestCases,hiddenTestCases,startCode,
+        ReferenceSolution, problemCreator
+    } = req.body;
+
+    try{
+     
+      if(!id) res.status(404).send('Invalid Id');
+       const dsa_prblm=await Problem.findById(id);
+      if(!dsa_prblm) res.status(404).send('ID is not there on server');
+         for(const {language,completeCode} of ReferenceSolution){
+               const languageId = getLanguageByiD(language);
+          
+        const submissions = visibleTestCases.map((testcase)=>({
+            source_code:completeCode,
+            language_id: languageId,
+            stdin: testcase.input,
+            expected_output: testcase.output
+        }));
+        const submitResult = await submitBatch(submissions);
+
+        const resultToken = submitResult.map((value)=> value.token);
+
+       const testResult = await submitToken(resultToken);
+       for(const test of testResult){
+        if(test.status_id!=3){
+         return res.status(400).send("Error Occured");
+        }
+       }
+
+      }
+      const Updated_problem=await Problem.findByIdAndUpdate(id,{...req.body},{runValidators:true,new:true});
+      res.status(200).send(Updated_problem);
+    }
+    catch(err){
+        res.status(400).send("Error: "+err);
+    }
+}
+const deleteProblem=async(req,res)=>{
+    const {id}=req.params;
+   
+
+    try{
+         if(!id) res.status(404).send('Invalid Id');
+      const dsa_prblm=await Problem.findById(id);
+    
+      if(!dsa_prblm) res.status(404).send('ID is not there on server');
+    
+      const Deleted_problem=await Problem.findByIdAndDelete(id);
+      if(!Deleted_problem) res.status(400).send('Problem is not there in DB');
+      res.status(200).send("Deleted Successfully");
+    }
+    catch(err){
+        res.status(400).send("Error: "+err);
+    }
+}
+const getProblemById=async(req,res)=>{
+    const {id}=req.params;
+ 
+   
+
+    try{
+        if(!id) res.status(404).send('Invalid Id');
+      const dsa_prblm=await Problem.findById(id);
+      
+      if(!dsa_prblm) res.status(404).send('ID is not there on server');
+        
+      const get_problem=await Problem.findById(id)
+      if(!get_problem) res.status(400).send('Problem is not there');
+      res.status(200).send(get_problem);
+    }
+    catch(err){
+        res.status(400).send("Error: "+err);
+    }
+}
+const getAllProblem=async(req,res)=>{
+    const {id}=req.params;
+     const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const skip = (page - 1) * limit;
+   
+
+    try{
+      
+      const Allproblem=await Problem.find({}) .skip(skip)
+            .limit(limit);
+      if(!Allproblem) res.status(400).send('Empty DB');
+      res.status(200).send(Allproblem);
+    }
+    catch(err){
         res.status(400).send("Error: "+err);
     }
 }
 
-
-module.exports = createProblem;
+module.exports = {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem};
