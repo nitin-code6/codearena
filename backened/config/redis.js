@@ -8,6 +8,7 @@ const redis_client = createClient({
         port: 14175,
        
     },
+
 });
 
 module.exports=redis_client;

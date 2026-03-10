@@ -9,7 +9,7 @@ const adminMiddleware=async (req,res,next)=>{
        const  payload=jwt.verify(token, process.env.JWT_SECRET);
        
        const {emailId}=payload;
-       console.log(emailId);
+    //    console.log(emailId);
        if(!emailId) throw new Error('Invalid token');
        const result=await User.findOne({emailId});
        if(!result) throw new Error("User Doesn't Exists");

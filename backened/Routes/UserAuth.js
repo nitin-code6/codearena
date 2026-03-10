@@ -4,7 +4,7 @@ const userMiddleware=require('../MiddleWare/UserMiddleware');
 const adminMiddleware=require('../MiddleWare/adminMiddleware')
 const {register,login,logout,adminRegister,getProfile}=require('../controllers/userAuthentication')
 
-
+// console.log('Iam in user auth');
 
 // Register
 authRouter.post('/register',register);

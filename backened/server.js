@@ -2,18 +2,20 @@ const express=require('express');
 require('dotenv').config() // Load environment variables from .env into process.env
 // console.log(process.env.PORT);
 const main=require('./config/db');
-console.log(main);
+// console.log(main);
 const client = require("./config/redis");
-console.log(client);
+// console.log(client);
 const app=express();
 const userAuth=require('./Routes/UserAuth');
 const cookieParser = require("cookie-parser");
 const problemRouter = require('./Routes/problemCreation');
+const submitRouter=require('./Routes/codeSubmission');
 app.use(express.json());
 
 app.use(cookieParser());
-app.use("/user",userAuth);
 app.use("/problem",problemRouter);
+app.use("/user",userAuth);
+app.use("/code",submitRouter);
 
 const startServer = async () => {
   try {

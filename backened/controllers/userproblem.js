@@ -1,6 +1,6 @@
 const {getLanguageByiD,submitBatch,submitToken} = require("../utils/Problemutility")
 const Problem = require("../Model/Problem")
-
+const User=require("../Model/user");
 const createProblem = async (req,res)=>{
 
     const {title,description,difficulty,tags,
@@ -33,7 +33,7 @@ const createProblem = async (req,res)=>{
 // console.log("submissions:", submissions);
 
         const submitResult = await submitBatch(submissions);
-        // console.log('submitresult',submitResult);
+        // console.log('submitresult', typeof submitResult);
         
         const resultToken = submitResult.map((value)=> value.token);
 
@@ -52,7 +52,7 @@ const createProblem = async (req,res)=>{
 
 
       // We can store it in our DB
-    //   console.log('Problem',Problem);
+//       console.log('Problem',Problem);
 // console.log(typeof Problem);
 
     const userProblem =  await Problem.create({
@@ -133,11 +133,9 @@ const getProblemById=async(req,res)=>{
 
     try{
         if(!id) res.status(404).send('Invalid Id');
-      const dsa_prblm=await Problem.findById(id);
       
-      if(!dsa_prblm) res.status(404).send('ID is not there on server');
         
-      const get_problem=await Problem.findById(id)
+      const get_problem=await Problem.findById(id).select("-problemCreator -ReferenceSolution -HiddenTestCases");
       if(!get_problem) res.status(400).send('Problem is not there');
       res.status(200).send(get_problem);
     }
@@ -146,7 +144,7 @@ const getProblemById=async(req,res)=>{
     }
 }
 const getAllProblem=async(req,res)=>{
-    const {id}=req.params;
+    
      const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
 
@@ -156,13 +154,31 @@ const getAllProblem=async(req,res)=>{
     try{
       
       const Allproblem=await Problem.find({}) .skip(skip)
-            .limit(limit);
-      if(!Allproblem) res.status(400).send('Empty DB');
+            .limit(limit).select("-problemCreator -ReferenceSolution -HiddenTestCases");
+      if(Allproblem.length === 0) res.status(400).send('Empty DB');
       res.status(200).send(Allproblem);
     }
     catch(err){
         res.status(400).send("Error: "+err);
     }
 }
+const solvedAllProblemByUser=async(req,res)=>{
+    
+     
 
-module.exports = {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem};
+    try{
+        const userId=req.result._id;
+      
+      const user1=await User.findById(userId).populate({
+        path:"problemSolved",
+        select:"_id title difficulty tags"
+      });
+  
+      res.status(200).send(user1);
+    }
+    catch(err){
+        res.status(400).send("Error: "+err);
+    }
+}
+
+module.exports = {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem,solvedAllProblemByUser};

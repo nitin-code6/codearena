@@ -82,5 +82,5 @@ problemCreator:{
 });
 
 const Problem = mongoose.model("problem", problemSchema);
-console.log('prblm in model',typeof Problem);
+
 module.exports=Problem;

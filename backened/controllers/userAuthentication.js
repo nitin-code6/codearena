@@ -5,7 +5,7 @@ const bcrypt=require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const register=async (req,res)=>{
- 
+    
     try{
         validate(req.body);
         const {firstName,emailId,password}=req.body;
@@ -32,8 +32,7 @@ const login=async (req,res)=>{
     if (!user) {
  throw new Error("Invalid Credentials");
    }
-   console.log("body password:", password);
-console.log("db password:", user.password);
+  
 
      const match=await bcrypt.compare(password,user.password );
 
