@@ -43,7 +43,13 @@ role:{
        default: 'user'
     },
     problemSolved:{
-        type:[String]
+        type:[
+            {
+                type:Schema.Types.ObjectId,
+                ref:'problem'
+            }
+        ],
+        unique:true
     }
 ,
 

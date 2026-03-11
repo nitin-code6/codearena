@@ -9,7 +9,7 @@ const submissionSchema = new Schema({
   },
   problemId: {
     type: Schema.Types.ObjectId,
-    ref: 'Problem',
+    ref:'problem',
     required: true
   },
   code: {
@@ -50,6 +50,6 @@ const submissionSchema = new Schema({
   timestamps: true
 });
 
-
+submissionSchema.index({ userId: 1, problemId: 1 });
 const Submission=mongoose.model("submission",submissionSchema);
 module.exports=Submission;

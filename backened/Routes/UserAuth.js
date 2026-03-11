@@ -2,7 +2,7 @@ const express=require('express');
 const authRouter=express.Router();
 const userMiddleware=require('../MiddleWare/UserMiddleware');
 const adminMiddleware=require('../MiddleWare/adminMiddleware')
-const {register,login,logout,adminRegister,getProfile}=require('../controllers/userAuthentication')
+const {register,login,logout,adminRegister,getProfile,deleteProfile}=require('../controllers/userAuthentication')
 
 // console.log('Iam in user auth');
 
@@ -17,6 +17,7 @@ authRouter.post('/logout',userMiddleware,logout);
 authRouter.post('/admin/register',adminMiddleware,adminRegister);
 // // GetProfile
 authRouter.get('/getProfile',userMiddleware,getProfile);
-
+// delete profile
+authRouter.delete('/delete',userMiddleware,deleteProfile);
 module.exports =authRouter;
 
