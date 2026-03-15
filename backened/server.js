@@ -5,11 +5,20 @@ const main=require('./config/db');
 // console.log(main);
 const client = require("./config/redis");
 // console.log(client);
+const cors = require('cors')
+
+// console.log("Hello")
+
+
 const app=express();
 const userAuth=require('./Routes/UserAuth');
 const cookieParser = require("cookie-parser");
 const problemRouter = require('./Routes/problemCreation');
 const submitRouter=require('./Routes/codeSubmission');
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true 
+}))
 app.use(express.json());
 
 app.use(cookieParser());
