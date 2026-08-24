@@ -6,11 +6,13 @@ const {register,login,logout,adminRegister,getProfile,deleteProfile}=require('..
 
 // console.log('Iam in user auth');
 
-// Register
-authRouter.post('/register',register);
+const rateLimiter = require('../MiddleWare/rateLimiter');
 
-// Login
-authRouter.post('/login',login);
+// Register (Rate limited to 10 requests per hour per IP)
+authRouter.post('/register', rateLimiter('auth:register', 10, 3600), register);
+
+// Login (Rate limited to 5 requests per minute per IP/Email)
+authRouter.post('/login', rateLimiter('auth:login', 5, 60), login);
 // // Logout
 authRouter.post('/logout',userMiddleware,logout);
 // // admin Register
