@@ -6,8 +6,9 @@ const userMiddleware=async (req,res,next)=>{
     try{
        const {token}=req.cookies;
        if(!token) throw new Error("Token is not present");
+    //    console.log("Inside userMiddleware",token);
        const  payload=jwt.verify(token, process.env.JWT_SECRET);
-       
+    //    console.log("payload",payload)
        const {emailId}=payload;
     //    console.log(emailId);
        if(!emailId) throw new Error('Invalid token');
