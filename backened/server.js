@@ -3,7 +3,7 @@ require('dotenv').config() // Load environment variables from .env into process.
 // console.log(process.env.PORT);
 const main=require('./config/db');
 // console.log(main);
-const client = require("./config/redis");
+const { redis_client: client } = require("./config/redis");
 // console.log(client);
 const cors = require('cors')
 

@@ -1,4 +1,4 @@
-const redis_client = require('../config/redis');
+const { redis_client } = require('../config/redis');
 const User=require('../Model/user');
 const submission=require('../Model/Submission');
 const validate=require('../utils/validator');

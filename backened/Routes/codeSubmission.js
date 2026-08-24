@@ -1,14 +1,11 @@
-const express=require('express');
-
-
-const submitRouter=express.Router();
-
+const express = require('express');
+const submitRouter = express.Router();
 const userMiddleware = require('../MiddleWare/UserMiddleware');
-const {SubmitCode,RunCode}=require('../controllers/userSubmission');
+const { SubmitCode, RunCode, checkSubmissionStatus, streamSubmissionStatus } = require('../controllers/userSubmission');
 
+submitRouter.post('/submit/:id', userMiddleware, SubmitCode);
+submitRouter.post('/run/:id', userMiddleware, RunCode);
+submitRouter.get('/status/:idempotencyKey', checkSubmissionStatus);
+submitRouter.get('/stream/:idempotencyKey', streamSubmissionStatus);
 
-
-submitRouter.post('/submit/:id',userMiddleware,SubmitCode);
-submitRouter.post('/run/:id',userMiddleware,RunCode);
-
-module.exports=submitRouter;
+module.exports = submitRouter;
