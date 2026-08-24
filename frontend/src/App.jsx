@@ -1,39 +1,93 @@
-import {Routes, Route ,Navigate} from "react-router";
+import { Routes, Route, Navigate } from "react-router";
 import Login from "./pages/Login";
-import Signup from "./pages/Signup";
 import Homepage from "./pages/Homepage";
-import UpdateProblem from "./pages/UpdateProblem";
+import SignUp from "./pages/Signup";
+import { checkAuth } from "./authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { useEffect } from "react";
+import AdminPanel from "./pages/AdminPanel";
+import UpdatePanel from "./pages/UpdateProblem";
+import CreatePanel from "./pages/CreateProblem";
+import DeletePanel from "./pages/DeleteProblem";
+import AdminInfo from "./pages/Admininfo";
+import AllProblems from "./pages/Allproblems";
+import Problempage from "./pages/Problempage";
+import Profile from "./pages/Profile";
 import UpdateProfile from "./pages/UpdateProfile";
 import SubmissionDetail from "./pages/SubmissionDetail";
-import { useDispatch, useSelector } from 'react-redux';
-import { checkAuth } from "./authSlice";
-import { useEffect } from "react";
 
-function App(){
-  
+function App() {
+  const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
-  const {isAuthenticated} = useSelector((state)=>state.auth);
-   useSelector((state)=> console.log(state.auth))
-  
-  // check initial authentication
+
   useEffect(() => {
     dispatch(checkAuth());
   }, [dispatch]);
 
-
-
-  return(
-  <>
-    <Routes>
-      <Route path="/" element={isAuthenticated ?<Homepage></Homepage>:<Navigate to="/signup" />}></Route>
-      <Route path="/login" element={isAuthenticated?<Navigate to="/" />:<Login></Login>}></Route>
-      <Route path="/signup" element={isAuthenticated?<Navigate to="/" />:<Signup></Signup>}></Route>
-      <Route path="/problem/update/:id" element={isAuthenticated ? <UpdateProblem /> : <Navigate to="/login" />}></Route>
-      <Route path="/profile/update" element={isAuthenticated ? <UpdateProfile /> : <Navigate to="/login" />}></Route>
-      <Route path="/submission/:id" element={isAuthenticated ? <SubmissionDetail /> : <Navigate to="/login" />}></Route>
-    </Routes>
-  </>
-  )
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="loading loading-spinner loading-lg"></span>
+      </div>
+    );
+  }
+  return (
+    <>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            isAuthenticated ? <Homepage></Homepage> : <Navigate to="/login" />
+          }
+        ></Route>
+        <Route
+          path="/login"
+          element={isAuthenticated ? <Navigate to="/" /> : <Login></Login>}
+        ></Route>
+        <Route
+          path="/signup"
+          element={isAuthenticated ? <Navigate to="/" /> : <SignUp></SignUp>}
+        ></Route>
+        <Route
+          path="/admin"
+          element={
+            isAuthenticated && user?.role === "admin" ? (
+              <AdminPanel />
+            ) : (
+              <Navigate to="/" />
+            )
+          }
+        >
+          <Route index element={<Navigate to="info" replace />} />
+          <Route path="info" element={<AdminInfo />}></Route>
+          <Route path="create" element={<CreatePanel />}></Route>
+          <Route path="update" element={<AllProblems mode="update" />}></Route>
+          <Route path="delete" element={<DeletePanel />}></Route>
+          <Route path="update/:id" element={<UpdatePanel />}></Route>
+        </Route>
+        <Route
+          path="/problem/:problemId"
+          element={<Problempage></Problempage>}
+        ></Route>
+        <Route
+          path="/profile"
+          element={isAuthenticated ? <Profile /> : <Navigate to="/login" />}
+        ></Route>
+        <Route
+          path="/profile/:userId"
+          element={isAuthenticated ? <Profile /> : <Navigate to="/login" />}
+        ></Route>
+        <Route
+          path="/update-profile"
+          element={isAuthenticated ? <UpdateProfile /> : <Navigate to="/login" />}
+        ></Route>
+        <Route
+          path="/submission/:id"
+          element={isAuthenticated ? <SubmissionDetail /> : <Navigate to="/login" />}
+        ></Route>
+      </Routes>
+    </>
+  );
 }
 
 export default App;

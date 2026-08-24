@@ -388,7 +388,7 @@ function UpdateProfile() {
                 </div>
               </div>
 
-              {/* Github */}
+              {/* Globe */}
               <div className="space-y-2">
                 <label className={labelCls}><Globe size={12} className="inline mr-1" />GitHub</label>
                 <div className={wrapCls}>

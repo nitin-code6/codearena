@@ -1,39 +1,57 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import axiosClient from "../utils/axiosClient";
-import { useNavigate, useParams } from "react-router";
-import {
-  Loader2, Plus, Trash2, CheckCircle, XCircle,
-  Code2, Eye, EyeOff, RefreshCw, BookOpen
-} from "lucide-react";
+import { useNavigate } from "react-router";
+import { Loader2, Plus, Trash2, CheckCircle, XCircle, Code2, FlaskConical, Eye, EyeOff } from "lucide-react";
 
-/* ================= SCHEMA ================= */
+/* ================= CONSTANTS ================= */
+const LANGS = ["C++", "Java", "JavaScript"];
+const LANG_INDEX = { "C++": 0, "Java": 1, "JavaScript": 2 };
+const LANG_COLORS = {
+  "C++": "text-sky-400 border-sky-400/40 bg-sky-400/10",
+  "Java": "text-orange-400 border-orange-400/40 bg-orange-400/10",
+  "JavaScript": "text-yellow-400 border-yellow-400/40 bg-yellow-400/10",
+};
+const TAG_LABELS = {
+  array: "Array", linkedlist: "Linked List", graph: "Graph", dp: "Dynamic Programming",
+};
+const DIFF_COLORS = {
+  easy: "text-emerald-400 border-emerald-400/40 bg-emerald-400/10",
+  medium: "text-amber-400 border-amber-400/40 bg-amber-400/10",
+  hard: "text-rose-400 border-rose-400/40 bg-rose-400/10",
+};
+
+/* ================= SCHEMA (matches backend model field names exactly) ================= */
 const problemSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
   difficulty: z.enum(["easy", "medium", "hard"]),
   tags: z.enum(["array", "linkedlist", "graph", "dp"]),
+
   visibletestCase: z.array(
     z.object({
       input: z.string().min(1, "Input required"),
       output: z.string().min(1, "Output required"),
       explanation: z.string().min(1, "Explanation required"),
     })
-  ).min(1),
+  ).min(1, "At least one visible test case required"),
+
   hiddentestCase: z.array(
     z.object({
       input: z.string().min(1, "Input required"),
       output: z.string().min(1, "Output required"),
     })
-  ).min(1),
+  ).min(1, "At least one hidden test case required"),
+
   startCode: z.array(
     z.object({
       language: z.enum(["C++", "Java", "JavaScript"]),
       initialCode: z.string().min(1, "Starter code required"),
     })
   ),
+
   referenceSolution: z.array(
     z.object({
       language: z.enum(["C++", "Java", "JavaScript"]),
@@ -42,75 +60,25 @@ const problemSchema = z.object({
   ),
 });
 
-/* ================= CONSTANTS ================= */
-const LANGS = ["C++", "Java", "JavaScript"];
-const LANG_COLORS = {
-  "C++": "text-sky-400 border-sky-400/40 bg-sky-400/10",
-  "Java": "text-orange-400 border-orange-400/40 bg-orange-400/10",
-  "JavaScript": "text-yellow-400 border-yellow-400/40 bg-yellow-400/10",
-};
-const DIFF_COLORS = {
-  easy: "text-emerald-400 border-emerald-400/40 bg-emerald-400/10",
-  medium: "text-amber-400 border-amber-400/40 bg-amber-400/10",
-  hard: "text-rose-400 border-rose-400/40 bg-rose-400/10",
-};
-const TAG_LABELS = {
-  array: "Array", linkedlist: "Linked List", graph: "Graph", dp: "Dynamic Programming",
-};
-
-/**
- * Normalize any language string from the DB to our canonical display names.
- * Handles: "cpp", "c++", "C++", "javascript", "Javascript", "js", "java", "Java", etc.
- */
-function normalizeLang(lang) {
-  if (!lang) return null;
-  const l = lang.toLowerCase().trim();
-  if (l === "c++" || l === "cpp") return "C++";
-  if (l === "java") return "Java";
-  if (l === "javascript" || l === "js") return "JavaScript";
-  return lang; // fallback — return as-is
-}
-
-/**
- * Sort startCode / referenceSolution from the backend to always be
- * [C++, Java, JavaScript] order, matching by language name (case-insensitive).
- * Fixes "JavaScript code appearing in C++ field" and "code not prefilling" bugs.
- */
-function sortByLanguage(arr, codeKey) {
-  return LANGS.map((lang) => {
-    const found = arr?.find((item) => normalizeLang(item.language) === lang);
-    if (found) {
-      // Normalize the language field too so the form value is always canonical
-      return { ...found, language: lang };
-    }
-    return { language: lang, [codeKey]: "" };
-  });
-}
-
 /* ================= COMPONENT ================= */
-function UpdatePanel() {
+function CreatePanel() {
   const navigate = useNavigate();
-  const { id } = useParams();
-
-  // UI state (formerly dead code — now all used)
-  const [activeTab, setActiveTab] = useState("C++");     // language tab switcher
-  const [showPreview, setShowPreview] = useState(false); // live problem preview panel
   const [toast, setToast] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fetchLoading, setFetchLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
+  const [activeTab, setActiveTab] = useState("C++"); // language tab switcher for code section
 
   const showToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 4000);
   };
 
+  const activeLangIdx = LANG_INDEX[activeTab] ?? 0;
+
   /* ================= FORM ================= */
   const {
     register,
     control,
     handleSubmit,
-    reset,
     watch,
     formState: { errors },
   } = useForm({
@@ -131,91 +99,26 @@ function UpdatePanel() {
   const { fields: hiddenFields, append: appendHidden, remove: removeHidden } =
     useFieldArray({ control, name: "hiddentestCase" });
 
-  /* ================= FETCH EXISTING PROBLEM ================= */
-  useEffect(() => {
-    const fetchProblem = async () => {
-      setFetchLoading(true);
-      setFetchError(null);
-      try {
-        const res = await axiosClient.get(`/problem/ProblemById/${id}`);
-        const problem = res.data;
-
-        // Sort arrays so index always matches [C++, Java, JavaScript] order
-        const sortedStartCode = sortByLanguage(problem.startCode, "initialCode");
-        const sortedSolution  = sortByLanguage(problem.referenceSolution, "completeCode");
-
-        reset({
-          title: problem.title,
-          description: problem.description,
-          difficulty: problem.difficulty,
-          tags: problem.tags?.[0] || "array",
-          visibletestCase: problem.visibletestCase?.length
-            ? problem.visibletestCase
-            : [{ input: "", output: "", explanation: "" }],
-          hiddentestCase: problem.hiddentestCase?.length
-            ? problem.hiddentestCase
-            : [{ input: "", output: "" }],
-          startCode: sortedStartCode,
-          referenceSolution: sortedSolution,
-        });
-      } catch (err) {
-        setFetchError("Failed to load problem. It may not exist.");
-      } finally {
-        setFetchLoading(false);
-      }
-    };
-
-    if (id) fetchProblem();
-  }, [id, reset]);
+  // watch values used for live stats bar
+  const difficulty = watch("difficulty");
+  const tag = watch("tags");
+  const visibleCases = watch("visibletestCase");
+  const hiddenCases = watch("hiddentestCase");
 
   /* ================= SUBMIT ================= */
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      await axiosClient.put(`/problem/update/${id}`, data);
-      showToast("success", "Problem updated successfully!");
+      await axiosClient.post("/problem/create", data);
+      showToast("success", "Problem created successfully!");
       setTimeout(() => navigate("/admin"), 1500);
     } catch (err) {
-      const msg = err?.response?.data || "Failed to update problem.";
+      const msg = err?.response?.data || "Failed to create problem. Check your code solution.";
       showToast("error", msg);
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  // watch() values used for live preview and stats bar
-  const title        = watch("title");
-  const description  = watch("description");
-  const difficulty   = watch("difficulty");
-  const tag          = watch("tags");
-  const visibleCases = watch("visibletestCase");
-  const hiddenCases  = watch("hiddentestCase");
-
-  /* ================= LOADING / ERROR ================= */
-  if (fetchLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mx-auto" />
-          <p className="text-slate-400">Loading problem...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (fetchError) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <XCircle className="w-10 h-10 text-rose-400 mx-auto" />
-          <p className="text-rose-300">{fetchError}</p>
-          <button onClick={() => navigate("/admin")} className="text-indigo-400 underline text-sm">
-            Back to Admin
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   /* ================= UI ================= */
   return (
@@ -223,11 +126,12 @@ function UpdatePanel() {
 
       {/* TOAST */}
       {toast && (
-        <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl border
-          ${toast.type === "success"
-            ? "bg-emerald-950 border-emerald-500/40 text-emerald-300"
-            : "bg-rose-950 border-rose-500/40 text-rose-300"
-          }`}
+        <div
+          className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl border transition-all
+            ${toast.type === "success"
+              ? "bg-emerald-950 border-emerald-500/40 text-emerald-300"
+              : "bg-rose-950 border-rose-500/40 text-rose-300"
+            }`}
         >
           {toast.type === "success" ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
           <span className="text-sm font-medium">{toast.message}</span>
@@ -237,39 +141,23 @@ function UpdatePanel() {
       <main className="max-w-4xl mx-auto px-4 py-10 space-y-8">
 
         {/* HEADER */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">
-              Update: <span className="text-indigo-400">{title || "Problem"}</span>
-            </h1>
-            <p className="text-slate-400 mt-1 text-sm">Edit an existing problem in CodeArena</p>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Create Problem</h1>
+            <p className="text-slate-400 mt-1 text-sm">Add a new coding challenge to CodeArena</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowPreview((v) => !v)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition
-                ${showPreview
-                  ? "bg-indigo-600/20 border-indigo-500/40 text-indigo-300"
-                  : "bg-slate-800 border-white/[0.06] text-slate-400 hover:text-slate-200"
-                }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              {showPreview ? "Hide Preview" : "Live Preview"}
-            </button>
-            <span className={`px-3 py-1 rounded-lg text-xs font-bold border uppercase tracking-wider ${DIFF_COLORS[difficulty] || DIFF_COLORS.medium}`}>
-              {difficulty}
-            </span>
-          </div>
+          <span className={`px-3 py-1 rounded-lg text-xs font-bold border uppercase tracking-wider ${DIFF_COLORS[difficulty]}`}>
+            {difficulty}
+          </span>
         </div>
 
-        {/* LIVE STATS BAR */}
+        {/* LIVE STATS BAR — updates in real time as user fills form */}
         <div className="grid grid-cols-4 gap-3">
           {[
             { label: "Difficulty", value: difficulty?.charAt(0).toUpperCase() + difficulty?.slice(1) || "—" },
-            { label: "Tag",        value: TAG_LABELS[tag] || tag || "—" },
+            { label: "Tag", value: TAG_LABELS[tag] || tag || "—" },
             { label: "Visible Cases", value: visibleCases?.length ?? 0 },
-            { label: "Hidden Cases",  value: hiddenCases?.length ?? 0 },
+            { label: "Hidden Cases", value: hiddenCases?.length ?? 0 },
           ].map(({ label, value }) => (
             <div key={label} className="bg-slate-900/60 border border-white/[0.06] rounded-xl p-3 text-center">
               <div className="text-xs text-slate-500 mb-1">{label}</div>
@@ -278,43 +166,6 @@ function UpdatePanel() {
           ))}
         </div>
 
-        {/* LIVE PREVIEW PANEL */}
-        {showPreview && (
-          <div className="bg-slate-900/70 border border-indigo-500/20 rounded-2xl p-6 space-y-4">
-            <h2 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3">📖 Problem Preview</h2>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 flex-wrap">
-                <h3 className="text-xl font-bold text-white flex-1">
-                  {title || <span className="text-slate-500 italic">No title yet</span>}
-                </h3>
-                <div className="flex gap-2">
-                  <span className={`px-2 py-0.5 rounded text-xs font-bold border ${DIFF_COLORS[difficulty] || ""}`}>
-                    {difficulty}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-slate-700/50 text-slate-300 text-xs">
-                    {TAG_LABELS[tag] || tag}
-                  </span>
-                </div>
-              </div>
-              <p className="text-slate-400 text-sm leading-relaxed whitespace-pre-wrap">
-                {description || <span className="italic">No description yet...</span>}
-              </p>
-              {visibleCases?.length > 0 && visibleCases[0]?.input && (
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-slate-400 uppercase">Example</p>
-                  <div className="bg-slate-800/60 rounded-lg p-3 font-mono text-sm space-y-1">
-                    <div><span className="text-slate-500">Input: </span><span className="text-slate-200">{visibleCases[0].input}</span></div>
-                    <div><span className="text-slate-500">Output: </span><span className="text-emerald-400">{visibleCases[0].output}</span></div>
-                    {visibleCases[0].explanation && (
-                      <div className="text-slate-400 text-xs pt-1">{visibleCases[0].explanation}</div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 
           {/* BASIC INFO */}
@@ -322,14 +173,25 @@ function UpdatePanel() {
             <div className="space-y-4">
               <div>
                 <label className="label-text">Title</label>
-                <input {...register("title")} placeholder="e.g. Two Sum" className="input-field" />
+                <input
+                  {...register("title")}
+                  placeholder="e.g. Two Sum"
+                  className="input-field"
+                />
                 {errors.title && <ErrorMsg msg={errors.title.message} />}
               </div>
+
               <div>
                 <label className="label-text">Description</label>
-                <textarea {...register("description")} placeholder="Problem statement..." rows={5} className="input-field resize-none" />
+                <textarea
+                  {...register("description")}
+                  placeholder="Problem statement, constraints, examples..."
+                  rows={5}
+                  className="input-field resize-none"
+                />
                 {errors.description && <ErrorMsg msg={errors.description.message} />}
               </div>
+
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="label-text">Difficulty</label>
@@ -404,23 +266,8 @@ function UpdatePanel() {
             </div>
           </Section>
 
-          {/* CODE SECTION
-              ─────────────────────────────────────────────────────────────────
-              FIX: All 3 language panels are ALWAYS rendered in the DOM.
-              Only the active tab is visible (display: block vs display: none).
-
-              WHY: If we conditionally render only the active panel, the textarea
-              unmounts/remounts on tab switch. This causes two problems:
-                1. react-hook-form loses the ref → preloaded data doesn't show
-                2. Any new edits are wiped when you switch tabs and come back
-
-              By keeping all 3 mounted and using CSS to hide inactive ones,
-              react-hook-form refs stay registered at all times — so preloaded
-              values always appear and edits are never lost on tab switch.
-              ─────────────────────────────────────────────────────────────────
-          */}
+          {/* CODE — all 3 languages always in DOM, active shown via CSS */}
           <Section title="Code Templates & Solutions" icon={<Code2 className="w-4 h-4" />}>
-            {/* Language Tabs */}
             <div className="flex gap-2 mb-6">
               {LANGS.map((lang) => (
                 <button
@@ -438,7 +285,6 @@ function UpdatePanel() {
               ))}
             </div>
 
-            {/* Always render all 3 — hide inactive with CSS, never unmount */}
             {LANGS.map((lang, i) => (
               <div
                 key={lang}
@@ -480,15 +326,15 @@ function UpdatePanel() {
             className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 disabled:opacity-60 disabled:cursor-not-allowed p-4 rounded-xl text-white font-bold text-base transition-all duration-300 shadow-lg shadow-indigo-500/20"
           >
             {isSubmitting ? (
-              <><Loader2 className="w-5 h-5 animate-spin" /> Updating Problem...</>
+              <><Loader2 className="w-5 h-5 animate-spin" /> Publishing Problem...</>
             ) : (
-              <><RefreshCw className="w-5 h-5" /> Update Problem</>
+              <><FlaskConical className="w-5 h-5" /> Publish Problem</>
             )}
           </button>
         </form>
       </main>
 
-      {/* STYLES */}
+      {/* GLOBAL STYLES */}
       <style>{`
         .input-field {
           width: 100%;
@@ -549,4 +395,4 @@ function ErrorMsg({ msg }) {
   return <p className="text-rose-400 text-xs mt-1">{msg}</p>;
 }
 
-export default UpdatePanel;
+export default CreatePanel;
