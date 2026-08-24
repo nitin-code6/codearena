@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router";
-import axiosClient from "../utility/axios";
+import axiosClient from "../utils/axiosClient";
 
 const SubmissionHistory = ({ problemId }) => {
   const navigate = useNavigate();

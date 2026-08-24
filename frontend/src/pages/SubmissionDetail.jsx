@@ -13,7 +13,7 @@ import {
   Copy,
   Clock,
 } from "lucide-react";
-import axiosClient from "../utility/axios";
+import axiosClient from "../utils/axiosClient";
 
 function SubmissionDetail() {
   const { id } = useParams();

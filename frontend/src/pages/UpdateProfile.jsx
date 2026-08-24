@@ -12,8 +12,8 @@ import {
   Camera,
   MapPin,
   Link,
-  Github,
-  Linkedin,
+  Globe,
+  Users,
   Briefcase,
   GraduationCap,
   Wrench,
@@ -23,7 +23,7 @@ import {
   Mail,
   Shield,
 } from "lucide-react";
-import axiosClient from "../utility/axios";
+import axiosClient from "../utils/axiosClient";
 
 function UpdateProfile() {
   const navigate = useNavigate();
@@ -390,7 +390,7 @@ function UpdateProfile() {
 
               {/* Github */}
               <div className="space-y-2">
-                <label className={labelCls}><Github size={12} className="inline mr-1" />GitHub</label>
+                <label className={labelCls}><Globe size={12} className="inline mr-1" />GitHub</label>
                 <div className={wrapCls}>
                   <input type="text" placeholder="https://github.com/username" className={inputCls}
                     {...register("github")} />
@@ -399,7 +399,7 @@ function UpdateProfile() {
 
               {/* LinkedIn */}
               <div className="space-y-2">
-                <label className={labelCls}><Linkedin size={12} className="inline mr-1" />LinkedIn</label>
+                <label className={labelCls}><Users size={12} className="inline mr-1" />LinkedIn</label>
                 <div className={wrapCls}>
                   <input type="text" placeholder="https://linkedin.com/in/username" className={inputCls}
                     {...register("linkedin")} />

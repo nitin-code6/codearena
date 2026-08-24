@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import axiosClient from "../utility/axios";
+import axiosClient from "../utils/axiosClient";
 import { useNavigate, useParams } from "react-router";
 import {
   Loader2, Plus, Trash2, CheckCircle, XCircle,
